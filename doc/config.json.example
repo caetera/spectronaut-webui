@@ -1,0 +1,9 @@
+{
+  "spectronaut_command": [
+    "dotnet",
+    "/usr/lib/spectronaut/SpectronautCMD.dll"
+  ],
+  "default_dir": "/work",
+  "spectronaut_key": null,
+  "port": 8080
+}
