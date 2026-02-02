@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from tempfile import mkdtemp
 from shutil import copy
-from typing import List
+from typing import Any, Dict, List
 from nicegui import app, ui
 from starlette.formparsers import MultiPartParser
 from .config import load_config
@@ -173,7 +173,7 @@ def handle_upload(field):
     dlg.open()
 
 @helpers.track_subprocess_cleanup
-async def process_direct(output_widget, progress_widget, args) -> bool:
+async def process_direct(output_widget, progress_widget, args) -> bool|None:
     """Run DirectDIA workflow"""
     if not args['datafiles']:
         ui.notify('No files to process', type='negative')
@@ -395,7 +395,7 @@ def root():
             ui.link('DirectDIA', '/direct').classes(button_style)
             ui.link('DIA', '/dia').classes(button_style)
         ui.space()
-        ui.button('Close', icon='power_settings_new', on_click=lambda: app.shutdown())
+        ui.button('Close', icon='power_settings_new', color='red', on_click=lambda: app.shutdown())
 
     ui.sub_pages({'/': info_page,
                   '/convert': convert_page,
@@ -426,7 +426,7 @@ def convert_page():
 
     datafiles: List[dict] = []
     table = None
-    running_task = {'task': None}
+    running_task: Dict[str, Any] = {'task': None}
 
     with ui.tabs().classes('w-full') as tabs:
         param_tab = ui.tab('Parameters')
@@ -462,7 +462,7 @@ def convert_page():
                 """Delete selected rows from the datafiles list and update the table."""
                 rows = None
                 try:
-                    rows = await table.get_selected_rows()
+                    rows = await table.get_selected_rows() # type: ignore
                 except Exception:
                     rows = None
 
@@ -480,10 +480,10 @@ def convert_page():
                 datafiles[:] = [d for d in datafiles if d.get('path') not in targets]
 
                 try:
-                    table.options['rowData'] = datafiles
+                    table.options['rowData'] = datafiles # type: ignore
                 except Exception:
                     pass
-                table.update()
+                table.update() # type: ignore
                 deleted_count = initial_count - len(datafiles)
                 ui.notify(f'Deleted {deleted_count} items', type='positive')
             
@@ -494,10 +494,10 @@ def convert_page():
                     return
                 datafiles.clear()
                 try:
-                    table.options['rowData'] = datafiles
+                    table.options['rowData'] = datafiles # type: ignore
                 except Exception:
                     pass
-                table.update()
+                table.update() # type: ignore
                 ui.notify('Cleared all items from the data table', type='positive')
 
             columnDefsNew = [e.copy() for e in columnDefs]
@@ -623,7 +623,7 @@ def directdia_page():
     
     datafiles: List[dict] = []
     table = None
-    running_task = {'task': None}  # Store the currently running coroutine task
+    running_task: Dict[str, Any] = {'task': None}  # Store the currently running coroutine task
 
     with ui.tabs().classes('w-full') as tabs:
         param_tab = ui.tab('Parameters')
@@ -689,17 +689,17 @@ def directdia_page():
                         groups[(d['condition'], d['fraction'])] += 1
 
                 try:
-                    table.options['rowData'] = datafiles
+                    table.options['rowData'] = datafiles # type: ignore
                 except Exception:
                     pass
-                table.update()
+                table.update() # type: ignore
                 ui.notify(f'Assigned replicates to {len(groups)} groups', type='positive')
             
             async def _apply_value_to_selected(column: str, title: str, placeholder: str):
                 """Open a small dialog to enter a string and apply it to the selected rows."""
                 rows = None
                 try:
-                    rows = await table.get_selected_rows()
+                    rows = await table.get_selected_rows() # type: ignore
                 except Exception:
                     rows = None
 
@@ -725,10 +725,10 @@ def directdia_page():
                                 d[column] = val
 
                         try:
-                            table.options['rowData'] = datafiles
+                            table.options['rowData'] = datafiles # type: ignore
                         except Exception:
                             pass
-                        table.update()
+                        table.update() # type: ignore
                         ui.notify(f'Applied {title} "{val}" to {len(targets)} rows', type='positive')
                         dlg.close()
 
@@ -745,7 +745,7 @@ def directdia_page():
                 """Delete selected rows from the datafiles list and update the table."""
                 rows = None
                 try:
-                    rows = await table.get_selected_rows()
+                    rows = await table.get_selected_rows()  # type: ignore
                 except Exception:
                     rows = None
 
@@ -763,10 +763,10 @@ def directdia_page():
                 datafiles[:] = [d for d in datafiles if d.get('path') not in targets]
 
                 try:
-                    table.options['rowData'] = datafiles
+                    table.options['rowData'] = datafiles # type: ignore
                 except Exception:
                     pass
-                table.update()
+                table.update() # type: ignore
                 deleted_count = initial_count - len(datafiles)
                 ui.notify(f'Deleted {deleted_count} items', type='positive')
             
@@ -777,10 +777,10 @@ def directdia_page():
                     return
                 datafiles.clear()
                 try:
-                    table.options['rowData'] = datafiles
+                    table.options['rowData'] = datafiles # type: ignore
                 except Exception:
                     pass
-                table.update()
+                table.update() # type: ignore
                 ui.notify('Cleared all items from the data table', type='positive')
 
             with ui.row().classes('q-pa-md gap-4'):

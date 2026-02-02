@@ -6,7 +6,7 @@ import multiprocessing
 import pandas as pd
 import threading
 import zipfile
-from typing import List, Tuple, Sequence
+from typing import List, Optional, Tuple, Sequence
 from pathlib import Path
 from asyncio.subprocess import STDOUT, PIPE
 
@@ -161,7 +161,7 @@ def write_conditon_file(filetable: List[dict], output_path: str, log: logging.Lo
     df.loc[:, ['#', 'Reference', 'Run Label', 'Condition', 'Fraction',
                 'Replicate', 'Label', 'File Name']].to_csv(output_path, sep='\t', index=False)
 
-def prepare_datafiles(filetable: List[dict], data_folder: Path, log: logging.Logger, progress, cancel_event: threading.Event = None) -> None:
+def prepare_datafiles(filetable: List[dict], data_folder: Path, log: logging.Logger, progress, cancel_event: Optional[threading.Event] = None) -> None:
     """Prepare data files for processing.
     
     Args:
@@ -350,9 +350,9 @@ def _parse_args(args: dict) -> Sequence[list]:
     
     return result
 
-def get_full_args(args: dict) -> None:
+def get_full_args(args: dict) -> List[str]:
     args_list = functools.reduce(lambda i,j: i + j, _parse_args(args), [])
-    for file in args.get('datafiles'):
+    for file in args.get('datafiles', []):
         args_list.extend(['-r', f'{file["path"]}'])
 
     return args_list
