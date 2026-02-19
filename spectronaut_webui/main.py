@@ -7,8 +7,8 @@ from typing import Any, Dict, List
 from nicegui import app, ui
 from starlette.formparsers import MultiPartParser
 from .config import load_config
-from . import helpers
 from .widgets import LocalPicker
+from .workflows import process_direct, process_convert, process_combine
 
 # large file upload support
 MultiPartParser.spool_max_size = 1024 * 1024 * 100  # 100 MB
@@ -173,292 +173,6 @@ def handle_upload(field):
         ui.upload(label='Select a file', auto_upload=True, max_files=1, on_upload=_on_upload)
 
     dlg.open()
-
-@helpers.track_subprocess_cleanup
-async def process_direct(output_widget, progress_widget, args) -> bool|None:
-    """Run DirectDIA workflow"""
-    if not args['datafiles']:
-        ui.notify('No files to process', type='negative')
-        return
-
-    if args['output_directory'] == '':
-        ui.notify('Output directory not specified', type='negative')
-        return 
-    
-    if not Path(args['output_directory']).exists():
-        Path(args['output_directory']).mkdir(parents=True, exist_ok=True)
-
-    if args['properties_file'] == '':
-        ui.notify('Properties file not specified', type='negative')
-        return
-    
-    if args['fasta_file'] == '':
-        ui.notify('FASTA file not specified', type='negative')
-        return
-    
-    if args['experiment_name'] == '':
-        args['experiment_name'] = Path(args['datafiles'][0]['name']).stem
-
-    data_folder = Path(args['output_directory']).joinpath('data')
-    data_folder.mkdir(parents=True, exist_ok=True)
-    params_folder = Path(args['output_directory']).joinpath('params')
-    params_folder.mkdir(parents=True, exist_ok=True)
-
-    if Path(args['properties_file']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['properties_file']).name)
-        copy(Path(args['properties_file']), new_path)
-        args['properties_file'] = new_path
-    
-    if Path(args['fasta_file']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['fasta_file']).name)
-        copy(Path(args['fasta_file']), new_path)
-        args['fasta_file'] = new_path
-
-    if args['go_file'] != '' and Path(args['go_file']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['go_file']).name)
-        copy(Path(args['go_file']), new_path)
-        args['go_file'] = new_path  
-
-    if args['report_file'] != '' and Path(args['report_file']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['report_file']).name)
-        copy(Path(args['report_file']), new_path)
-        args['report_file'] = new_path  
-    
-    if args['mod_repository'] != '' and Path(args['mod_repository']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['mod_repository']).name)
-        copy(Path(args['mod_repository']), new_path)
-        args['mod_repository'] = new_path
-    
-    if args['enzyme_database'] != '' and Path(args['enzyme_database']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['enzyme_database']).name)
-        copy(Path(args['enzyme_database']), new_path)
-        args['enzyme_database'] = new_path
-
-    output_widget.clear()
-
-    if not helpers.validate_filetable(args['datafiles'], 'raw'):
-        log.error('Invalid file table: Mixed or unsupported file types.')
-        return
-
-    try:
-        ui.notify('Preparing data files...', type='info')
-        await helpers.prepare_datafiles_async(args['datafiles'], data_folder, log, progress_widget)
-    except asyncio.CancelledError:
-        log.warning('Processing cancelled by user')
-        return
-    except Exception as e:
-        log.error(f'Error preparing data files: {e}')
-        return
-
-    try:
-        condition_file = Path(params_folder).joinpath(f'{args["experiment_name"]}_condition.tsv')
-        ui.notify('Creating condition file...')
-        await asyncio.to_thread(helpers.write_conditon_file, args['datafiles'], str(condition_file), log)
-        args['condition_file'] = condition_file
-        log.debug(f'Wrote condition file to: {condition_file}')
-    except Exception as e:
-        log.error(f'Error writing condition file: {e}')
-        return
-
-    try:
-        args_list = await asyncio.to_thread(helpers.get_full_args, args, file_arg='-r')
-        log.debug(f'Got full arguments: {len(args_list)} included')
-    except Exception as e:
-        log.error(f'Cannot get arguments: {e}')
-        return
-    
-    log.info('Activating Spectronaut')
-    result = await helpers.run_cmd(SPECTRONAUT + ['activate', SPECTRONAUT_KEY], log)
-    if result:
-        log.info('Spectronaut activated successfully')
-    else:
-        log.error('Cannot activate Spectronaut, see detailed log')
-        return
-
-    success = True
-    log.info('Launching Spectronaut')
-    result = await helpers.run_cmd(SPECTRONAUT + args_list, log)
-    success = success and result
-    if result:
-        log.info('Spectronaut exited successfully')
-    else:
-        log.error('Processing failed, see detailed log')
-    
-    log.info('Deactivating Spectronaut')
-    result = await helpers.run_cmd(SPECTRONAUT + ['deactivate'], log)
-    if result:
-        log.info('Spectronaut deactivated')
-    else:
-        log.error('Cannot deactivate Spectronaut, see detailed log')
-    
-    return success
-
-@helpers.track_subprocess_cleanup
-async def process_convert(output_widget, progress_widget, args):
-    """Run Convert workflow"""
-    if not args['datafiles']:
-        ui.notify('No files to process', type='negative')
-        return
-
-    if args['output_directory'] == '':
-        ui.notify('Output directory not specified', type='negative')
-        return
-    
-    if not Path(args['output_directory']).exists():
-        Path(args['output_directory']).mkdir(parents=True)
-
-    data_folder = Path(args['output_directory']).joinpath('data')
-    data_folder.mkdir(parents=True, exist_ok=True)
-    params_folder = Path(args['output_directory']).joinpath('params')
-    params_folder.mkdir(parents=True, exist_ok=True)
-
-    if args['properties_file'] != '' and Path(args['properties_file']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['properties_file']).name)
-        copy(Path(args['properties_file']), new_path)
-        args['properties_file'] = new_path
-    
-    output_widget.clear()
-
-    try:
-        ui.notify('Preparing data files...', type='info')
-        await helpers.prepare_datafiles_async(args['datafiles'], data_folder, log, progress_widget)
-    except asyncio.CancelledError:
-        log.warning('Processing cancelled by user')
-        return
-    except Exception as e:
-        log.error(f'Error preparing data files: {e}')
-        return
-    
-    args.pop('protocol')
-    
-    try:
-        args_list = await asyncio.to_thread(helpers.get_args, args)
-        log.debug(f'Got base arguments: {len(args_list)} included')
-    except Exception as e:
-        log.error(f'Cannot get arguments: {e}')
-        return
-
-    log.info('Activating Spectronaut')
-    result = await helpers.run_cmd(SPECTRONAUT + ['activate', SPECTRONAUT_KEY], log)
-    if result:
-        log.info('Spectronaut activated successfully')
-    else:
-        log.error('Cannot activate Spectronaut, see detailed log')
-        return
-
-    total = len(args['datafiles'])
-    log.info(f'Converting {total} files')
-    progress_widget.visible = True
-    progress_widget.value = 0
-    success = True
-    for i in range(total):
-        file_path = Path(args['datafiles'][i]['path'])
-        result = await helpers.run_cmd(SPECTRONAUT + ['convert', '-i', file_path] + args_list, log)
-        success = success and result
-        if result:
-            log.info(f'[{i + 1}|{total}] Converted successfully')
-        else:
-            log.error('Processing failed, see detailed log')
-        
-        progress_widget.value = (i + 1) / total
-    
-    progress_widget.visible = False
-    
-    log.info('Deactivating Spectronaut')
-    result = await helpers.run_cmd(SPECTRONAUT + ['deactivate'], log)
-    if result:
-        log.info('Spectronaut deactivated')
-    else:
-        log.error('Cannot deactivate Spectronaut, see detailed log')
-    
-    return success
-
-@helpers.track_subprocess_cleanup
-async def process_combine(output_widget, progress_widget, args):
-    """Run Combine workflow"""
-    if not args['datafiles']:
-        ui.notify('No files to process', type='negative')
-        return
-
-    if args['output_directory'] == '':
-        ui.notify('Output directory not specified', type='negative')
-        return
-    
-    if not Path(args['output_directory']).exists():
-        Path(args['output_directory']).mkdir(parents=True)
-
-    if args['experiment_name'] == '':
-        args['experiment_name'] = Path(args['datafiles'][0]['name']).stem
-
-    params_folder = Path(args['output_directory']).joinpath('params')
-    params_folder.mkdir(parents=True, exist_ok=True)
-
-    if args['properties_file'] != '' and Path(args['properties_file']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['properties_file']).name)
-        copy(Path(args['properties_file']), new_path)
-        args['properties_file'] = new_path
-    
-    if args['fasta_file'] != '' and Path(args['fasta_file']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['fasta_file']).name)
-        copy(Path(args['fasta_file']), new_path)
-        args['fasta_file'] = new_path
-
-    if args['report_file'] != '' and Path(args['report_file']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['report_file']).name)
-        copy(Path(args['report_file']), new_path)
-        args['report_file'] = new_path  
-    
-    if args['mod_repository'] != '' and Path(args['mod_repository']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['mod_repository']).name)
-        copy(Path(args['mod_repository']), new_path)
-        args['mod_repository'] = new_path
-    
-    if args['enzyme_database'] != '' and Path(args['enzyme_database']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['enzyme_database']).name)
-        copy(Path(args['enzyme_database']), new_path)
-        args['enzyme_database'] = new_path
-
-    output_widget.clear()
-
-    if not helpers.validate_filetable(args['datafiles'], 'sne'):
-        log.error('Invalid file table: Mixed or unsupported file types.')
-        return
-
-    args.pop('protocol')
-    
-    try:
-        args_list = await asyncio.to_thread(helpers.get_full_args, args, file_arg='-sne')
-        log.debug(f'Got base arguments: {len(args_list)} included')
-    except Exception as e:
-        log.error(f'Cannot get arguments: {e}')
-        return
-
-    log.info('Activating Spectronaut')
-    result = await helpers.run_cmd(SPECTRONAUT + ['activate', SPECTRONAUT_KEY], log)
-    if result:
-        log.info('Spectronaut activated successfully')
-    else:
-        log.error('Cannot activate Spectronaut, see detailed log')
-        return
-
-    total = len(args['datafiles'])
-    log.info(f'Combining {total} files')
-    success = True
-    result = await helpers.run_cmd(SPECTRONAUT + args_list, log)
-    success = success and result
-    if result:
-        log.info('Spectronaut exited successfully')
-    else:
-        log.error('Processing failed, see detailed log')
-    
-    log.info('Deactivating Spectronaut')
-    result = await helpers.run_cmd(SPECTRONAUT + ['deactivate'], log)
-    if result:
-        log.info('Spectronaut deactivated')
-    else:
-        log.error('Cannot deactivate Spectronaut, see detailed log')
-    
-    return success
 
 # --- UI LAYER ---
 columnDefs = [
@@ -649,7 +363,7 @@ def convert_page():
                     # Create and store the task so it can be cancelled
                     running_task['task'] = asyncio.current_task()
                     try:
-                        rc = await process_convert(terminal_output, progress, args)
+                        rc = await process_convert(terminal_output, progress, args, SPECTRONAUT, SPECTRONAUT_KEY)
                         if rc:
                             ok.visible = True
                             not_ok.visible = False
@@ -841,7 +555,7 @@ def combine_page():
                     # Create and store the task so it can be cancelled
                     running_task['task'] = asyncio.current_task()
                     try:
-                        rc = await process_combine(terminal_output, progress, args)
+                        rc = await process_combine(terminal_output, progress, args, SPECTRONAUT, SPECTRONAUT_KEY)
                         if rc:
                             ok.visible = True
                             not_ok.visible = False
@@ -1154,7 +868,7 @@ def directdia_page():
                     # Create and store the task so it can be cancelled
                     running_task['task'] = asyncio.current_task()
                     try:
-                        rc = await process_direct(terminal_output, progress, args)
+                        rc = await process_direct(terminal_output, progress, args, SPECTRONAUT, SPECTRONAUT_KEY)
                         if rc:
                             ok.visible = True
                             not_ok.visible = False
