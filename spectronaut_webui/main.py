@@ -71,6 +71,8 @@ def check_type(path: Path) -> str:
         return 'Thermo Raw'
     elif path.is_file() and ''.join(path.suffixes[-2:]).lower() == '.d.zip':
         return 'Bruker D Zip'
+    elif path.is_file() and path.suffix.lower() == '.sne':
+        return 'SNE'
     else:
         return 'File'
 
@@ -234,7 +236,7 @@ async def process_direct(output_widget, progress_widget, args) -> bool|None:
 
     output_widget.clear()
 
-    if not helpers.validate_filetable(args['datafiles']):
+    if not helpers.validate_filetable(args['datafiles'], 'raw'):
         log.error('Invalid file table: Mixed or unsupported file types.')
         return
 
@@ -259,7 +261,7 @@ async def process_direct(output_widget, progress_widget, args) -> bool|None:
         return
 
     try:
-        args_list = await asyncio.to_thread(helpers.get_full_args, args)
+        args_list = await asyncio.to_thread(helpers.get_full_args, args, file_arg='-r')
         log.debug(f'Got full arguments: {len(args_list)} included')
     except Exception as e:
         log.error(f'Cannot get arguments: {e}')
@@ -361,6 +363,93 @@ async def process_convert(output_widget, progress_widget, args):
         progress_widget.value = (i + 1) / total
     
     progress_widget.visible = False
+    
+    log.info('Deactivating Spectronaut')
+    result = await helpers.run_cmd(SPECTRONAUT + ['deactivate'], log)
+    if result:
+        log.info('Spectronaut deactivated')
+    else:
+        log.error('Cannot deactivate Spectronaut, see detailed log')
+    
+    return success
+
+@helpers.track_subprocess_cleanup
+async def process_combine(output_widget, progress_widget, args):
+    """Run Combine workflow"""
+    if not args['datafiles']:
+        ui.notify('No files to process', type='negative')
+        return
+
+    if args['output_directory'] == '':
+        ui.notify('Output directory not specified', type='negative')
+        return
+    
+    if not Path(args['output_directory']).exists():
+        Path(args['output_directory']).mkdir(parents=True)
+
+    if args['experiment_name'] == '':
+        args['experiment_name'] = Path(args['datafiles'][0]['name']).stem
+
+    params_folder = Path(args['output_directory']).joinpath('params')
+    params_folder.mkdir(parents=True, exist_ok=True)
+
+    if args['properties_file'] != '' and Path(args['properties_file']).exists():
+        new_path = Path(params_folder).joinpath(Path(args['properties_file']).name)
+        copy(Path(args['properties_file']), new_path)
+        args['properties_file'] = new_path
+    
+    if args['fasta_file'] != '' and Path(args['fasta_file']).exists():
+        new_path = Path(params_folder).joinpath(Path(args['fasta_file']).name)
+        copy(Path(args['fasta_file']), new_path)
+        args['fasta_file'] = new_path
+
+    if args['report_file'] != '' and Path(args['report_file']).exists():
+        new_path = Path(params_folder).joinpath(Path(args['report_file']).name)
+        copy(Path(args['report_file']), new_path)
+        args['report_file'] = new_path  
+    
+    if args['mod_repository'] != '' and Path(args['mod_repository']).exists():
+        new_path = Path(params_folder).joinpath(Path(args['mod_repository']).name)
+        copy(Path(args['mod_repository']), new_path)
+        args['mod_repository'] = new_path
+    
+    if args['enzyme_database'] != '' and Path(args['enzyme_database']).exists():
+        new_path = Path(params_folder).joinpath(Path(args['enzyme_database']).name)
+        copy(Path(args['enzyme_database']), new_path)
+        args['enzyme_database'] = new_path
+
+    output_widget.clear()
+
+    if not helpers.validate_filetable(args['datafiles'], 'sne'):
+        log.error('Invalid file table: Mixed or unsupported file types.')
+        return
+
+    args.pop('protocol')
+    
+    try:
+        args_list = await asyncio.to_thread(helpers.get_full_args, args, file_arg='-sne')
+        log.debug(f'Got base arguments: {len(args_list)} included')
+    except Exception as e:
+        log.error(f'Cannot get arguments: {e}')
+        return
+
+    log.info('Activating Spectronaut')
+    result = await helpers.run_cmd(SPECTRONAUT + ['activate', SPECTRONAUT_KEY], log)
+    if result:
+        log.info('Spectronaut activated successfully')
+    else:
+        log.error('Cannot activate Spectronaut, see detailed log')
+        return
+
+    total = len(args['datafiles'])
+    log.info(f'Combining {total} files')
+    success = True
+    result = await helpers.run_cmd(SPECTRONAUT + args_list, log)
+    success = success and result
+    if result:
+        log.info('Spectronaut exited successfully')
+    else:
+        log.error('Processing failed, see detailed log')
     
     log.info('Deactivating Spectronaut')
     result = await helpers.run_cmd(SPECTRONAUT + ['deactivate'], log)
@@ -616,7 +705,195 @@ def convert_page():
 
 def combine_page():
     """Combine workflow page."""
-    ui.label('Coming soon').classes('q-pa-md')
+    datafiles: List[dict] = []
+    table = None
+    running_task: Dict[str, Any] = {'task': None}
+
+    with ui.tabs().classes('w-full') as tabs:
+        param_tab = ui.tab('Parameters')
+        output_tab = ui.tab('Output')
+
+    with ui.tab_panels(tabs, value=param_tab).classes('w-full'):
+        with ui.tab_panel(param_tab):
+            def open_sne_picker():
+                picker = LocalPicker(directory=DEFAULT_DIR, multiple=True, show_files=True,
+                                    default_selection='.sne', on_select=lambda paths: add_to_datafiles(paths, datafiles, table))
+                try:
+                    picker.open()
+                except Exception:
+                    pass
+            
+            async def _delete_selected(*_):
+                """Delete selected rows from the datafiles list and update the table."""
+                rows = None
+                try:
+                    rows = await table.get_selected_rows() # type: ignore
+                except Exception:
+                    rows = None
+
+                targets = set()
+                if rows:
+                    for r in rows:
+                        if isinstance(r, dict) and r.get('path'):
+                            targets.add(r.get('path'))
+
+                if not targets:
+                    ui.notify('No rows selected', type='negative')
+                    return
+
+                initial_count = len(datafiles)
+                datafiles[:] = [d for d in datafiles if d.get('path') not in targets]
+
+                try:
+                    table.options['rowData'] = datafiles # type: ignore
+                except Exception:
+                    pass
+                table.update() # type: ignore
+                deleted_count = initial_count - len(datafiles)
+                ui.notify(f'Deleted {deleted_count} items', type='positive')
+            
+            async def _clear_table(*_):
+                """Clear all entries from the datafiles list and update the table."""
+                if not datafiles:
+                    ui.notify('Data table is already empty', type='warning')
+                    return
+                datafiles.clear()
+                try:
+                    table.options['rowData'] = datafiles # type: ignore
+                except Exception:
+                    pass
+                table.update() # type: ignore
+                ui.notify('Cleared all items from the data table', type='positive')
+
+            columnDefsNew = [e.copy() for e in columnDefs]
+            for c_def in columnDefsNew[3:]:
+                c_def['hide'] = True
+            
+            with ui.row().classes('q-pa-md gap-4'):
+                ui.button('Add SNE File', icon='add', on_click=open_sne_picker)                
+
+            with ui.row().classes('w-full q-pa-md gap-2'):
+                table = ui.aggrid({'columnDefs': columnDefsNew, 'rowData': datafiles,
+                                        'rowSelection': {'mode': 'multiRow'}}).classes('h-128')
+                
+                ui.button('Delete selected', on_click=_delete_selected).tooltip('Delete selected entries from the data table')
+                ui.button('Clear all', on_click=_clear_table).tooltip('Clear all entries from the data table')
+            
+            with ui.row().classes('w-full q-pa-md gap-2'):
+                exp_name = ui.input(label='Experiment Name', placeholder='Enter experiment name here').classes('w-full')
+
+            with ui.row().classes('w-full q-pa-md gap-2 items-center'):
+                prop_input = ui.input(label='Settings file', placeholder='Enter settings file path here').classes('grow')
+                ui.button('Select', icon='file_open', on_click=lambda _: open_file_picker(prop_input, '.prop'))
+                ui.button('Upload', icon='file_upload', on_click=lambda _: handle_upload(prop_input))
+            
+            with ui.row().classes('w-full q-pa-md gap-2 items-center'):
+                fasta_input = ui.input(label='FASTA file', placeholder='Enter FASTA file path here').classes('grow')
+                ui.button('Select', icon='file_open', on_click=lambda _: open_file_picker(fasta_input, '.fasta|.bgsfasta'))
+                ui.button('Upload', icon='file_upload', on_click=lambda _: handle_upload(fasta_input))
+            
+            with ui.row().classes('w-full q-pa-md gap-2 items-center'):
+                rs_input = ui.input(label='Report schema', placeholder='Enter report schema path here').classes('grow')
+                ui.button('Select', icon='file_open', on_click=lambda _: open_file_picker(rs_input, '.rs'))
+                ui.button('Upload', icon='file_upload', on_click=lambda _: handle_upload(rs_input))
+                
+            with ui.row().classes('w-full q-pa-md gap-2 items-center'):
+                output_dir = ui.input(label='Output Directory', placeholder='Enter output directory here').classes('grow')
+                ui.button('Select', icon='folder_open', on_click=lambda _: open_dirw_picker(output_dir))
+            
+            with ui.expansion('Advanced options').classes('w-full'):
+                with ui.row().classes('w-full q-pa-md gap-2 items-center'):
+                    temp_dir = ui.input(label='Temp Directory', placeholder='Enter temporary directory here or leave empty for default one').classes('grow')
+                    ui.button('Select', icon='folder_open', on_click=lambda _: open_dirw_picker(temp_dir))
+                with ui.row().classes('w-full q-pa-md gap-2 items-center'):
+                    modrep_input = ui.input(label='Custom modification repository', placeholder='Enter file path here').classes('grow')
+                    ui.button('Select', icon='file_open', on_click=lambda _: open_file_picker(modrep_input, ''))
+                    ui.button('Upload', icon='file_upload', on_click=lambda _: handle_upload(modrep_input))
+                with ui.row().classes('w-full q-pa-md gap-2 items-center'):
+                    enzdb_input = ui.input(label='Custom enzyme DB', placeholder='Enter file path here').classes('grow')
+                    ui.button('Select', icon='file_open', on_click=lambda _: open_file_picker(enzdb_input, '.enzdb'))
+                    ui.button('Upload', icon='file_upload', on_click=lambda _: handle_upload(enzdb_input))
+                
+            with ui.row().classes('q-pa-md'):        
+                start_button = ui.button('Start Processing', color='primary')
+                # Run the processing coroutine inside the UI slot so it can safely
+                # perform UI updates (avoids "slot stack is empty" runtime error).
+                async def _on_start_click(*_):
+                    args = {
+                        'protocol': 'combine',
+                        'experiment_name': exp_name.value,
+                        'properties_file': prop_input.value,
+                        'fasta_file': fasta_input.value,
+                        'report_file': rs_input.value,
+                        'output_directory': output_dir.value,
+                        'temp_directory': temp_dir.value,
+                        'mod_repository': modrep_input.value,
+                        'enzyme_database': enzdb_input.value,
+                        'datafiles': datafiles,
+                    }
+
+                    tabs.set_value('Output')
+                    start_button.disable()
+                    abort_button.enable()
+                    ok.visible = False
+                    not_ok.visible = False
+
+                    # Create and store the task so it can be cancelled
+                    running_task['task'] = asyncio.current_task()
+                    try:
+                        rc = await process_combine(terminal_output, progress, args)
+                        if rc:
+                            ok.visible = True
+                            not_ok.visible = False
+                        else:
+                            ok.visible = False
+                            not_ok.visible = True
+                    except asyncio.CancelledError:
+                        log.warning('Processing aborted by user')
+                        ok.visible = False
+                        not_ok.visible = True
+                    finally:
+                        running_task['task'] = None
+                        start_button.enable()
+                        abort_button.disable()
+                        if terminate.value:
+                            app.shutdown()
+
+                start_button.on('click', _on_start_click)
+
+        with ui.tab_panel(output_tab):
+            ui.label('Console Output').classes('text-lg font-bold q-mt-lg')
+            terminal_output = ui.log().props('id="terminal_log"').classes('w-full font-mono h-128')
+            progress = ui.linear_progress(show_value=False).classes('w-full')
+            progress.visible = False
+            with ui.row().classes('w-full q-pa-md gap-2 items-center') as ok:
+                ui.icon('check_circle', color='green').classes('text-5xl')
+                ui.label('Success').classes('text-green text-xl')
+            with ui.row().classes('w-full q-pa-md gap-2 items-center') as not_ok:
+                ui.icon('error', color='red').classes('text-5xl')
+                ui.label('Error').classes('text-red text-xl')
+            ok.visible = False
+            not_ok.visible = False
+
+            with ui.row().classes('w-full q-pa-md gap-2'):
+                abort_button = ui.button('Abort', color='negative', icon='stop')
+                abort_button.disable()
+                terminate = ui.checkbox('Terminate the app when processing is done')
+                terminate.value = False
+                
+                async def _on_abort_click(*_):
+                    if running_task['task'] is not None:
+                        running_task['task'].cancel()
+                        ui.notify('Aborting...', type='warning')
+                    else:
+                        ui.notify('No processing running', type='info')
+                
+                abort_button.on('click', _on_abort_click)
+                        
+            console = LogElementHandler(terminal_output)
+            console.setLevel(logging.INFO)
+            log.addHandler(console)
+            ui.context.client.on_disconnect(lambda: log.removeHandler(console))
 
 def directdia_page():
     """DirectDIA workflow page."""

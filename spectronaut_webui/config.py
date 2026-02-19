@@ -13,7 +13,7 @@ DEFAULT_CONFIG = {
 }
 
 
-def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+def load_config(config_path: Optional[Path|str] = None) -> Dict[str, Any]:
     """Load configuration from file or use defaults.
     
     Args:
@@ -51,7 +51,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     return config
 
 
-def create_default_config(config_path: Optional[str] = None) -> Path:
+def create_default_config(config_path: Optional[Path|str] = None) -> Path:
     """Create a default configuration file.
     
     Args:

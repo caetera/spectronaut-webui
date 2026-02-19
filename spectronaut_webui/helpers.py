@@ -124,15 +124,23 @@ def _extract_zip_worker(idx: int, zip_path: Path, extract_path: Path, progress_q
         _try_put(('done', idx, False, '', str(e)))
         return (idx, False, '', str(e))
 
-def validate_filetable(filetable: List[dict]) -> bool:
+def validate_filetable(filetable: List[dict], rules: str ='raw') -> bool:
     types = {file['type'] for file in filetable}
     
-    if len(types) == 1 and 'Thermo Raw' in types:
-        return True
-    elif len(types) == 1 and ('Bruker D' in types or 'Bruker D Zip' in types):
-        return True
-    elif len(types) == 2 and 'Bruker D' in types and 'Bruker D Zip' in types:
-        return True
+    if rules == 'raw':
+        if len(types) == 1 and 'Thermo Raw' in types:
+            return True
+        elif len(types) == 1 and ('Bruker D' in types or 'Bruker D Zip' in types):
+            return True
+        elif len(types) == 2 and 'Bruker D' in types and 'Bruker D Zip' in types:
+            return True
+        else:
+            return False
+    elif rules == 'sne':
+        if len(types) == 1 and 'SNE' in types:
+            return True
+        else:
+            return False
     else:
         return False
     
@@ -350,10 +358,10 @@ def _parse_args(args: dict) -> Sequence[list]:
     
     return result
 
-def get_full_args(args: dict) -> List[str]:
+def get_full_args(args: dict, file_arg='-r') -> List[str]:
     args_list = functools.reduce(lambda i,j: i + j, _parse_args(args), [])
     for file in args.get('datafiles', []):
-        args_list.extend(['-r', f'{file["path"]}'])
+        args_list.extend([file_arg, f'{file["path"]}'])
 
     return args_list
 
