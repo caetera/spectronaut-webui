@@ -67,7 +67,7 @@ Convert raw mass spectrometry files to Spectronaut HTRMS format.
    - Click "Add Bruker D" for Bruker `.d` folders
    - Click "Add Thermo Raw" for Thermo `.raw` files
    - Click "Add zipped Bruker D" for `.d.zip` archives
-3. (Optional) Select a settings file (`.prop`, `.txt`, or `.json`)
+3. (Optional) Select a settings file (`.prop`)
 4. Choose an output directory
 5. (Optional) Configure advanced options:
    - Temp directory for intermediate files
@@ -122,7 +122,7 @@ Perform library-free Direct DIA analysis with full experiment metadata.
 4. **Configure Search Parameters:**
    
    - **Experiment Name** - Name for this analysis (if not assigned, the name of the first file is used)
-   - **Properties File** - Spectronaut search settings (`.prop`, `.txt`, `.json`)
+   - **Properties File** - Spectronaut search settings (`.prop`)
    - **Report Schema** (Optional) - Custom report format (`.rs`)
    - **FASTA File** - Protein sequence database (`.fasta`, `.bgsfasta`)
    - **GO File** (Optional) - Gene Ontology annotations (`.goannotation`, `.goa`)
@@ -169,7 +169,62 @@ Spectral library-based DIA analysis (coming soon).
 
 ### Combine Workflow
 
-Combine multiple Spectronaut reports (coming soon).
+Combine multiple Spectronaut Experiment (SNE) files into a single experiment and exporting a unified report. SNE files
+are combined "on-the-fly", no new SNE is created
+
+#### Steps:
+
+1. Navigate to the **Combine** page
+
+2. **Add SNE Files:**
+   - Click "Add SNE File" to browse for Spectronaut experiment files (`.sne`)
+   - Files appear in the data table
+   - Use **Shift** to select multiple files at once
+   - You can add multiple SNE files to combine into a single analysis
+
+3. **Configure Combine Parameters:**
+   
+   - **Experiment Name** - Name for the combined analysis (if not assigned, the name of the first file is used)
+   - **Settings File** - (Optional) Spectronaut settings for the combination (`.prop`), if not defined will be imputed from input files
+   - **FASTA File** - (Optional) Protein sequence database (`.fasta`, `.bgsfasta`)
+   - **Report Schema** (Optional) - Custom report format (`.rs`), if not defined schema selected in the settings is used
+
+4. **Set Output:**
+   
+   - **Output Directory** - Where combined results will be saved
+
+5. **Advanced Options** (Optional):
+   
+   - Temp Directory for intermediate files
+   - Custom Modification Repository
+   - Custom enzyme database (`.enzdb`)
+   - Verbose output
+   - Segmented dia-PASEF (beta)
+   - Parquet output format
+   - Terminate after the first error
+
+6. Click **Start Processing**
+
+#### Output:
+
+Results are organized in the output directory:
+```
+output_directory/
+├── params/            # Parameter files used (FASTA, settings, etc.)
+└── [results]          # Combined Spectronaut output files
+```
+
+#### Use Cases:
+
+**Combining Multiple Experiments:**
+- Add SNE files from different runs or experiments
+- Spectronaut will combine the data and perform unified quantification
+- Useful for cross-experiment comparisons or meta-analyses
+
+**Re-analyzing Combined Data:**
+- Combine existing SNE files with new search parameters
+- Apply different normalization or filtering strategies
+- Generate unified reports across multiple experiments
 
 ## Process Control
 

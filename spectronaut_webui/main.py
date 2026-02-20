@@ -527,6 +527,11 @@ def combine_page():
                     enzdb_input = ui.input(label='Custom enzyme DB', placeholder='Enter file path here').classes('grow')
                     ui.button('Select', icon='file_open', on_click=lambda _: open_file_picker(enzdb_input, '.enzdb'))
                     ui.button('Upload', icon='file_upload', on_click=lambda _: handle_upload(enzdb_input))
+                with ui.row().classes('w-full q-pa-md gap-2 items-center'):
+                    mark_verbose = ui.checkbox('Verbose output')
+                    mark_segment = ui.checkbox('Segmented dia-PASEF (beta)')
+                    mark_parquet = ui.checkbox('Parquet output')
+                    mark_error = ui.checkbox('Terminate on error')
                 
             with ui.row().classes('q-pa-md'):        
                 start_button = ui.button('Start Processing', color='primary')
@@ -543,6 +548,10 @@ def combine_page():
                         'temp_directory': temp_dir.value,
                         'mod_repository': modrep_input.value,
                         'enzyme_database': enzdb_input.value,
+                        'verbose': mark_verbose.value,
+                        'segmented': mark_segment.value,
+                        'parquet': mark_parquet.value,
+                        'error_term': mark_error.value,
                         'datafiles': datafiles,
                     }
 
