@@ -321,7 +321,7 @@ def convert_page():
             
             with ui.row().classes('w-full q-pa-md gap-2 items-center'):
                 prop_input = ui.input(label='Settings file', placeholder='Enter settings file path here').classes('grow')
-                ui.button('Select', icon='file_open', on_click=lambda _: open_file_picker(prop_input, '.prop|.txt|.json'))
+                ui.button('Select', icon='file_open', on_click=lambda _: open_file_picker(prop_input, '.prop'))
                 ui.button('Upload', icon='file_upload', on_click=lambda _: handle_upload(prop_input))
                 
             with ui.row().classes('w-full q-pa-md gap-2 items-center'):
@@ -796,7 +796,7 @@ def directdia_page():
 
             with ui.row().classes('w-full q-pa-md gap-2 items-center'):
                 prop_input = ui.input(label='Properties file', placeholder='Enter properties file path here').classes('grow')
-                ui.button('Select', icon='file_open', on_click=lambda _: open_file_picker(prop_input, '.prop|.txt|.json'))
+                ui.button('Select', icon='file_open', on_click=lambda _: open_file_picker(prop_input, '.prop'))
                 ui.button('Upload', icon='file_upload', on_click=lambda _: handle_upload(prop_input))
                 
             with ui.row().classes('w-full q-pa-md gap-2 items-center'):

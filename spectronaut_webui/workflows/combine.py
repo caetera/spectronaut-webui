@@ -30,30 +30,12 @@ async def process_combine(output_widget, progress_widget, args, spectronaut_cmd,
     params_folder = Path(args['output_directory']).joinpath('params')
     params_folder.mkdir(parents=True, exist_ok=True)
 
-    if args['properties_file'] != '' and Path(args['properties_file']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['properties_file']).name)
-        copy(Path(args['properties_file']), new_path)
-        args['properties_file'] = new_path
-    
-    if args['fasta_file'] != '' and Path(args['fasta_file']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['fasta_file']).name)
-        copy(Path(args['fasta_file']), new_path)
-        args['fasta_file'] = new_path
-
-    if args['report_file'] != '' and Path(args['report_file']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['report_file']).name)
-        copy(Path(args['report_file']), new_path)
-        args['report_file'] = new_path  
-    
-    if args['mod_repository'] != '' and Path(args['mod_repository']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['mod_repository']).name)
-        copy(Path(args['mod_repository']), new_path)
-        args['mod_repository'] = new_path
-    
-    if args['enzyme_database'] != '' and Path(args['enzyme_database']).exists():
-        new_path = Path(params_folder).joinpath(Path(args['enzyme_database']).name)
-        copy(Path(args['enzyme_database']), new_path)
-        args['enzyme_database'] = new_path
+    # Make a snapshot of the parameters files in the output directory to ensure reproducibility
+    for property_key in ['properties_file', 'fasta_file', 'report_file', 'mod_repository', 'enzyme_database']:
+        if args[property_key] != '' and Path(args[property_key]).exists():
+            new_path = Path(params_folder).joinpath(Path(args[property_key]).name)
+            copy(Path(args[property_key]), new_path)
+            args[property_key] = new_path
 
     output_widget.clear()
 
@@ -77,6 +59,17 @@ async def process_combine(output_widget, progress_widget, args, spectronaut_cmd,
     else:
         log.error('Cannot activate Spectronaut, see detailed log')
         return
+    
+    global_args = helpers.get_global_args(args)
+    if global_args:
+        log.info('Executing global arguments')
+        log.debug(f'Global arguments: {global_args}')
+        result = await helpers.run_cmd(spectronaut_cmd + global_args, log)
+        if result:
+            log.info('Global arguments set successfully')
+        else:
+            log.error('Cannot execute global arguments, see detailed log')
+            return
 
     total = len(args['datafiles'])
     log.info(f'Combining {total} files')

@@ -323,14 +323,22 @@ async def prepare_datafiles_async(filetable: List[dict], data_folder: Path, log:
 def get_args(args: dict) -> Sequence[str]:
     return functools.reduce(lambda i,j: i + j, _parse_args(args), [])
 
-def _parse_args(args: dict) -> Sequence[list]:
+def get_global_args(args: dict) -> Sequence[str]:
     result = []
     if args.get('temp_directory'):
-        result.append(['-setTemp', f'{args["temp_directory"]}'])
+        result.extend(['-setTemp', f'{args["temp_directory"]}'])
+        args.pop('temp_directory')
     if args.get('mod_repository'):
-        result.append(['--importModRepository', f'{args["mod_repository"]}'])
+        result.extend(['--importModRepository', f'{args["mod_repository"]}'])
+        args.pop('mod_repository')
     if args.get('enzyme_database'):
-        result.append(['--importEnzymeDB', f'{args["enzyme_database"]}'])
+        result.extend(['--importEnzymeDB', f'{args["enzyme_database"]}'])
+        args.pop('enzyme_database')
+    
+    return result
+
+def _parse_args(args: dict) -> Sequence[list]:
+    result = []
     if args.get('protocol'):
         result.append([f'{args["protocol"]}'])
     if args.get('experiment_name'):
