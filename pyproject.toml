@@ -57,10 +57,10 @@ spectronaut-ui = "spectronaut_webui.main:main"
 spectronaut-ui-config = "spectronaut_webui.config:generate_config_cli"
 
 [tool.setuptools]
-packages = ["spectronaut_webui"]
+packages = ["spectronaut_webui", "spectronaut_webui.workflows"]
 
 [tool.setuptools.package-data]
-spectronaut_ucloud_ui = ["py.typed"]
+spectronaut_webui = ["py.typed"]
 
 [tool.black]
 line-length = 120
@@ -83,7 +83,7 @@ extend-exclude = '''
 [tool.isort]
 profile = "black"
 line_length = 120
-known_first_party = ["spectronaut_ucloud_ui"]
+known_first_party = ["spectronaut_webui"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
