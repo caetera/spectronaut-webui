@@ -42,9 +42,7 @@ async def process_combine(output_widget, progress_widget, args, spectronaut_cmd,
     if not helpers.validate_filetable(args['datafiles'], 'sne'):
         log.error('Invalid file table: Mixed or unsupported file types.')
         return
-
-    args.pop('protocol')
-    
+        
     try:
         args_list = await asyncio.to_thread(helpers.get_full_args, args, file_arg='-sne')
         log.debug(f'Got base arguments: {len(args_list)} included')
