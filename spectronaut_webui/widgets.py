@@ -30,7 +30,7 @@ class LocalPicker(ui.dialog):
         
         self.selected: Set[str] = set() # Store as strings for JSON safety
         self.items: List[Path] = []
-        self.last_clicked_index: int = None
+        self.last_clicked_index: int = None # type: ignore
 
         with self, ui.card().classes('w-[800px] h-[700px] column no-wrap'):
             # Detect Shift key globally while dialog is open
@@ -161,7 +161,7 @@ class LocalPicker(ui.dialog):
         if path.is_dir():
             self.path = path
             self.path_input.value = str(self.path)
-            self.last_clicked_index = None
+            self.last_clicked_index = None #type: ignore
             self.update_list()
 
     def update_list(self):
@@ -256,7 +256,7 @@ class LocalPicker(ui.dialog):
     def _item_clicked(self, path: Path):
         self.path = path
         self.path_input.value = str(self.path)
-        self.last_clicked_index = None
+        self.last_clicked_index = None # type: ignore
         self.update_list()
 
     def _handle_confirm(self):
@@ -273,7 +273,7 @@ class LocalPicker(ui.dialog):
         p = Path(value).expanduser()
         if p.exists() and p.is_dir():
             self.path = p
-            self.last_clicked_index = None
+            self.last_clicked_index = None # type: ignore
             self.update_list()
         else:
             self.list_container.clear()

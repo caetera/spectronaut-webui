@@ -18,7 +18,8 @@ If no `config.json` file exists, the application will use default values:
 
 - **spectronaut_command**: `["dotnet", "/usr/lib/spectronaut/SpectronautCMD.dll"]`
 - **default_dir**: `/work`
-- **spectronaut_key**: Read from `SPECTRONAUTKEY` environment variable
+- **spectronaut_key**: `null`
+- **port**: `8080`
 
 ## Example Configuration
 
@@ -34,7 +35,7 @@ You can either:
     "/usr/lib/spectronaut/SpectronautCMD.dll"
   ],
   "default_dir": "/work",
-  "spectronaut_key": null,
+  "spectronaut_key": null, //replace with actual license key
   "port": 8080
 }
 ```
@@ -54,9 +55,7 @@ The default directory shown in file picker dialogs when selecting input files an
 ### spectronaut_key
 Type: `string` or `null`
 
-The Spectronaut license key. If set to `null` or omitted, the key will be read from the `SPECTRONAUTKEY` environment variable.
-
-**Note**: The environment variable always takes precedence over the config file for the license key.
+The Spectronaut license key.
 
 ### port
 Type: `int`
@@ -69,4 +68,3 @@ Configuration values are applied in the following order (later sources override 
 
 1. Default values (hardcoded in `config.py`)
 2. Values from `config.json` file
-3. Environment variables (only for `spectronaut_key`)

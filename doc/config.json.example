@@ -4,6 +4,6 @@
     "/usr/lib/spectronaut/SpectronautCMD.dll"
   ],
   "default_dir": "/work",
-  "spectronaut_key": null,
+  "spectronaut_key": null, //replace with actual license key
   "port": 8080
 }

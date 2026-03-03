@@ -942,7 +942,7 @@ def main():
         log.error('Cannot find license key')
         exit(1)
 
-    ui.run(root, title='Spectronaut UCloud GUI', port=PORT, reload=False)
+    ui.run(root, title='Spectronaut WebUI', port=PORT, reload=False)
 
 if __name__ in {"__main__", "__mp_main__"}:
     main()

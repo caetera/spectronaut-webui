@@ -96,25 +96,6 @@ Update the `spectronaut_command` field:
 
 ### 3. Set License Key
 
-You have two options for providing the Spectronaut license key:
-
-**Option A: Environment Variable (Recommended)**
-
-```bash
-# Linux/Mac
-export SPECTRONAUTKEY="your-license-key-here"
-
-# Windows (Command Prompt)
-set SPECTRONAUTKEY=your-license-key-here
-
-# Windows (PowerShell)
-$env:SPECTRONAUTKEY="your-license-key-here"
-```
-
-To make it permanent, add it to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.).
-
-**Option B: Configuration File**
-
 Edit `~/.spectronaut_webui/config.json`:
 
 ```json
@@ -122,8 +103,6 @@ Edit `~/.spectronaut_webui/config.json`:
   "spectronaut_key": "your-license-key-here"
 }
 ```
-
-**Note:** The environment variable takes precedence over the config file.
 
 ## Verify Installation
 

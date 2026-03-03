@@ -1,14 +1,13 @@
 """Configuration management for Spectronaut UCloud GUI."""
 import json
 import logging
-from os import environ
 from pathlib import Path
 from typing import Dict, Any, Optional
 
 DEFAULT_CONFIG = {
     'spectronaut_command': ['dotnet', '/usr/lib/spectronaut/SpectronautCMD.dll'],
     'default_dir': '/work',
-    'spectronaut_key': None,  # Will be read from environment if not in config
+    'spectronaut_key': None,
     'port': 8080,
 }
 
@@ -42,11 +41,6 @@ def load_config(config_path: Optional[Path|str] = None) -> Dict[str, Any]:
             # If config file is malformed or unreadable, log warning and use defaults
             logging.getLogger().warning(f"Warning: Could not load config from {config_path}: {e}")
             logging.getLogger().info("Using default configuration.")
-    
-    # Environment variable takes precedence over config file for license key
-    env_key = environ.get('SPECTRONAUTKEY', None)
-    if env_key is not None:
-        config['spectronaut_key'] = env_key
     
     return config
 
@@ -90,6 +84,6 @@ def generate_config_cli() -> None:
         print(f"Default configuration file created at: {created_path}")
         print("\nPlease edit this file to configure:")
         print("  - spectronaut_command: Command to run Spectronaut")
-        print("  - spectronaut_key: License key (or set SPECTRONAUTKEY environment variable)")
+        print("  - spectronaut_key: License key")
         print("  - default_dir: Default working directory")
         print("  - port: Web UI port (default: 8080)")
