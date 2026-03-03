@@ -90,7 +90,10 @@ async def process_convert(output_widget, progress_widget, args, spectronaut_cmd,
         else:
             log.error('Processing failed, see detailed log')
         
-        progress_widget.value = (i + 1) / total
+        try:
+            progress_widget.value = (i + 1) / total
+        except Exception as e:
+            log.warning(f'Error updating progress: {e}')
     
     progress_widget.visible = False
     

@@ -235,7 +235,10 @@ def prepare_datafiles(filetable: List[dict], data_folder: Path, log: logging.Log
                         log.error(f'Failed extracting {file["path"]}: {err}')
                         errors.append((file['path'], err))
                     done_counter[0] += 1
-                    progress.value = done_counter[0]/total
+                    try:
+                        progress.value = done_counter[0]/total
+                    except Exception as e:
+                        log.warning(f'Error updating progress: {e}')
 
         reader_thread = threading.Thread(target=_progress_reader, daemon=True)
         reader_thread.start()
