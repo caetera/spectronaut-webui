@@ -20,7 +20,7 @@ The application has a navigation bar with the following pages:
 
 - **Info** - Welcome page with basic instructions
 - **Convert** - Convert raw MS files to Spectronaut format
-- **Combine** - Combine multiple Spectronaut reports (coming soon)
+- **Combine** - Combine multiple Spectronaut reports
 - **DirectDIA** - Library-free DIA analysis workflow
 - **DIA** - Spectral library-based DIA analysis (coming soon)
 
@@ -92,6 +92,8 @@ Perform library-free Direct DIA analysis with full experiment metadata.
 
 2. **Add Data Files:**
    - Click "Add Bruker D" / "Add Thermo Raw" / "Add zipped Bruker D"
+   **Note**: Files from different vendors (Thermo and Bruker) cannot be combined in a single run; it is possible to
+   combine zipped `Bruker D` and regular `Bruker D`s.
    - Files appear in the data table
 
 3. **Configure Metadata:**
