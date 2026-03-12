@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spectronaut-webui"
-version = "0.2.2"
+version = "0.2.3"
 description = "NiceGUI-based web interface for Spectronaut proteomics software"
 readme = "README.md"
 requires-python = ">=3.10"

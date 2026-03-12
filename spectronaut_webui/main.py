@@ -209,10 +209,9 @@ def root():
 def info_page():
     """Info page - starting page."""
     ui.markdown('''
-    ## Spectronaut UCloud GUI
+    ## Spectronaut WebUI
 
-    This application helps you to setup the search using Spectronaut in UCloud 
-    environment.
+    This application helps you to setup the search using Spectronaut.
                 
     Use the navigation bar at the top to switch between different functionalities.
                 
@@ -861,7 +860,7 @@ def directdia_page():
                         'temp_directory': temp_dir.value,
                         'verbose': mark_verbose.value,
                         'parquet': mark_parquet.value,
-                        'segmented': mark_segment,
+                        'segmented': mark_segment.value,
                         'error_term': mark_error.value,
                         'mod_repository': modrep_input.value,
                         'enzyme_database': enzdb_input.value,
