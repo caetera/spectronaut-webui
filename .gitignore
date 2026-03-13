@@ -1,5 +1,6 @@
 # Not common
 spectronaut
+.nicegui
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

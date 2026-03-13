@@ -1,8 +1,8 @@
 import asyncio
 import logging
 from pathlib import Path
+from shutil import rmtree
 from tempfile import mkdtemp
-from shutil import copy
 from typing import Any, Dict, List
 from nicegui import app, ui
 from starlette.formparsers import MultiPartParser
@@ -16,6 +16,7 @@ MultiPartParser.spool_max_size = 1024 * 1024 * 100  # 100 MB
 # --- Global constants ---
 global_temp_directory = mkdtemp()
 _config = None
+running_task: Dict[str, Any] = {'task': None}
 
 #logging setup
 class LogElementHandler(logging.Handler):
@@ -61,6 +62,12 @@ SPECTRONAUT = _config['spectronaut_command']
 DEFAULT_DIR = _config['default_dir']
 SPECTRONAUT_KEY = _config['spectronaut_key']
 PORT = _config['port']
+
+def cleanup():
+    """Cleanup function to remove temporary files."""
+    log.debug(f'Cleaning up {global_temp_directory}')
+    rmtree(global_temp_directory, ignore_errors=True)
+    app.storage.general.clear()
 
 def check_type(path: Path) -> str:
     if path.is_dir() and path.suffix.lower() == '.d':
@@ -205,6 +212,9 @@ def root():
                   '/combine': combine_page,
                   '/direct': directdia_page,
                   '/dia': dia_page}).classes('w-full')
+    
+    if app.storage.general.get('running') is None:
+        app.storage.general['running'] = False
 
 def info_page():
     """Info page - starting page."""
@@ -228,7 +238,6 @@ def convert_page():
 
     datafiles: List[dict] = []
     table = None
-    running_task: Dict[str, Any] = {'task': None}
 
     with ui.tabs().classes('w-full') as tabs:
         param_tab = ui.tab('Parameters')
@@ -338,7 +347,8 @@ def convert_page():
                     mark_error = ui.checkbox('Terminate on error')
 
             with ui.row().classes('q-pa-md'):        
-                start_button = ui.button('Start Processing', color='primary')
+                start_button = ui.button('Start Processing', color='primary').bind_enabled_from(
+                    app.storage.general, 'running', lambda running: not running)
                 # Run the processing coroutine inside the UI slot so it can safely
                 # perform UI updates (avoids "slot stack is empty" runtime error).
                 async def _on_start_click(*_):
@@ -354,8 +364,7 @@ def convert_page():
                     }
 
                     tabs.set_value('Output')
-                    start_button.disable()
-                    abort_button.enable()
+                    app.storage.general['running'] = True
                     ok.visible = False
                     not_ok.visible = False
 
@@ -375,8 +384,7 @@ def convert_page():
                         not_ok.visible = True
                     finally:
                         running_task['task'] = None
-                        start_button.enable()
-                        abort_button.disable()
+                        app.storage.general['running'] = False
                         if terminate.value:
                             app.shutdown()
 
@@ -397,8 +405,8 @@ def convert_page():
             not_ok.visible = False
 
             with ui.row().classes('w-full q-pa-md gap-2'):
-                abort_button = ui.button('Abort', color='negative', icon='stop')
-                abort_button.disable()
+                abort_button = ui.button('Abort', color='negative', icon='stop').bind_enabled_from(
+                    app.storage.general, 'running', lambda running: running)
                 terminate = ui.checkbox('Terminate the app when processing is done')
                 terminate.value = False
                 
@@ -420,8 +428,7 @@ def combine_page():
     """Combine workflow page."""
     datafiles: List[dict] = []
     table = None
-    running_task: Dict[str, Any] = {'task': None}
-
+    
     with ui.tabs().classes('w-full') as tabs:
         param_tab = ui.tab('Parameters')
         output_tab = ui.tab('Output')
@@ -533,7 +540,8 @@ def combine_page():
                     mark_error = ui.checkbox('Terminate on error')
                 
             with ui.row().classes('q-pa-md'):        
-                start_button = ui.button('Start Processing', color='primary')
+                start_button = ui.button('Start Processing', color='primary').bind_enabled_from(
+                    app.storage.general, 'running', lambda running: not running)
                 # Run the processing coroutine inside the UI slot so it can safely
                 # perform UI updates (avoids "slot stack is empty" runtime error).
                 async def _on_start_click(*_):
@@ -555,8 +563,7 @@ def combine_page():
                     }
 
                     tabs.set_value('Output')
-                    start_button.disable()
-                    abort_button.enable()
+                    app.storage.general['running'] = True
                     ok.visible = False
                     not_ok.visible = False
 
@@ -576,8 +583,7 @@ def combine_page():
                         not_ok.visible = True
                     finally:
                         running_task['task'] = None
-                        start_button.enable()
-                        abort_button.disable()
+                        app.storage.general['running'] = False
                         if terminate.value:
                             app.shutdown()
 
@@ -598,8 +604,8 @@ def combine_page():
             not_ok.visible = False
 
             with ui.row().classes('w-full q-pa-md gap-2'):
-                abort_button = ui.button('Abort', color='negative', icon='stop')
-                abort_button.disable()
+                abort_button = ui.button('Abort', color='negative', icon='stop').bind_enabled_from(
+                    app.storage.general, 'running', lambda running: running)
                 terminate = ui.checkbox('Terminate the app when processing is done')
                 terminate.value = False
                 
@@ -622,8 +628,7 @@ def directdia_page():
     
     datafiles: List[dict] = []
     table = None
-    running_task: Dict[str, Any] = {'task': None}  # Store the currently running coroutine task
-
+    
     with ui.tabs().classes('w-full') as tabs:
         param_tab = ui.tab('Parameters')
         output_tab = ui.tab('Output')
@@ -846,7 +851,8 @@ def directdia_page():
                     mark_error = ui.checkbox('Terminate on error')
 
             with ui.row().classes('q-pa-md'):
-                start_button = ui.button('Start Processing', color='primary')
+                start_button = ui.button('Start Processing', color='primary').bind_enabled_from(
+                    app.storage.general, 'running', lambda running: not running)
 
                 async def _on_start_click(*_):
                     args = {
@@ -868,10 +874,9 @@ def directdia_page():
                     }
 
                     tabs.set_value('Output')
+                    app.storage.general['running'] = True
                     ok.visible = False
                     not_ok.visible = False
-                    start_button.disable()
-                    abort_button.enable()
                     
                     # Create and store the task so it can be cancelled
                     running_task['task'] = asyncio.current_task()
@@ -889,8 +894,7 @@ def directdia_page():
                         not_ok.visible = True
                     finally:
                         running_task['task'] = None
-                        start_button.enable()
-                        abort_button.disable()
+                        app.storage.general['running'] = False
                         if terminate.value:
                             app.shutdown()
 
@@ -903,8 +907,8 @@ def directdia_page():
             progress.visible = False
             
             with ui.row().classes('w-full q-pa-md gap-2'):
-                abort_button = ui.button('Abort', color='negative', icon='stop')
-                abort_button.disable()
+                abort_button = ui.button('Abort', color='negative', icon='stop').bind_enabled_from(
+                    app.storage.general, 'running', lambda running: running)
                 terminate = ui.checkbox('Terminate the app when processing is done')
                 terminate.value = False
                 
@@ -940,6 +944,8 @@ def main():
     if SPECTRONAUT_KEY is None:
         log.error('Cannot find license key')
         exit(1)
+    
+    app.on_shutdown(cleanup)
 
     ui.run(root, title='Spectronaut WebUI', port=PORT, reload=False)
 
