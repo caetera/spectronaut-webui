@@ -32,7 +32,7 @@ class LocalPicker(ui.dialog):
         self.items: List[Path] = []
         self.last_clicked_index: int = None # type: ignore
 
-        with self, ui.card().classes('w-[800px] h-[700px] column no-wrap'):
+        with self, ui.card().classes('h-[700px] column no-wrap').style('min-width: 650px; max-width: 90vw; max-height: 90vh'):
             # Detect Shift key globally while dialog is open
             ui.keyboard(on_key=self._handle_key)
 
@@ -57,7 +57,7 @@ class LocalPicker(ui.dialog):
                                                       on_change=lambda e: self._set_show_files(e.value))
 
             with ui.scroll_area().classes('col grow border rounded q-mt-sm'):
-                self.list_container = ui.list().props('dense separtor')
+                self.list_container = ui.list().props('dense separtor w-full')
                 self.update_list()
 
             # Footer: selection count, quick actions and confirm/cancel
@@ -210,7 +210,8 @@ class LocalPicker(ui.dialog):
                     # main label: clicking it opens folders; files do not navigate
                     with ui.item_section():
                         # use a flat button for the label so we can attach a click handler
-                        ui.button(p.name, on_click=lambda e, i=index: self._label_clicked(i)).props('flat').classes('text-sm text-left')
+                        ui.button(p.name, on_click=lambda e, i=index: self._label_clicked(i)).props('flat align=left no-caps wrap').\
+                            style('word-break: break-all;')
 
     def _collect_raw_items(self) -> List[Path]:
         raw_items: List[Path] = []

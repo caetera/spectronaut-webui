@@ -1,4 +1,4 @@
-"""Configuration management for Spectronaut UCloud GUI."""
+"""Configuration management for Spectronaut Web UI."""
 import json
 import logging
 from pathlib import Path

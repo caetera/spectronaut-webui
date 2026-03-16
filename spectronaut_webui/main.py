@@ -197,7 +197,7 @@ columnDefs = [
 def root():
     button_style = 'px-4 py-2 rounded-md bg-blue-500 text-white hover:bg-blue-700 transition-colors text-lg font-semibold'
     with ui.row().classes('w-full q-pa-md bg-blue-100 gap-4 items-center'):
-        ui.label('Spectronaut UCloud GUI').classes('text-xl font-bold')
+        ui.label('Spectronaut Web UI').classes('text-xl font-bold')
         with ui.row().classes('gap-2'):
             ui.link('Info', '/').classes(button_style)
             ui.link('Convert', '/convert').classes(button_style)
@@ -225,10 +225,9 @@ def info_page():
                 
     Use the navigation bar at the top to switch between different functionalities.
                 
-    Each page has parameter tabs where you can select processing parameters, input files,
-    and their metadata.
-    
-    Click "Start Processing" on the  the selected items.
+    Each page has a parameter tab where you can select processing parameters, input files,
+    and their metadata (condition, replicate, fraction, reference). After setting up the parameters,    
+    click "Start Processing" button.
 
     Processing log will be displayed in the Output tab.
     ''').classes('q-pa-md')

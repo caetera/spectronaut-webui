@@ -1,6 +1,6 @@
 # Configuration
 
-The Spectronaut UCloud GUI can be configured using a `config.json` file placed in `~/.spectronaut_webui/` directory in your home folder.
+The Spectronaut Web UI can be configured using a `config.json` file placed in `~/.spectronaut_webui/` directory in your home folder.
 
 ## Generating Configuration File
 
